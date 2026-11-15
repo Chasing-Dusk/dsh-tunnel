@@ -34,6 +34,6 @@
 
 ## 卸载
 
-停止隧道 → 移除启动项 → 恢复 DSH 默认信任配置 → 插件页移除 → 清理 `$DSH_HOME\dsh-tunnel` 与凭据 `dsh-tunnel:frp-token`。
+停止隧道 → 移除启动项 → 恢复 DSH 默认信任配置 → 插件页移除 → 清理 `$DSH_HOME\dsh-tunnel` 与凭据 `dsh-tunnel/frp-token`。
 
 完整说明、配置项表、排障与安全说明见仓库 `README.md` 与 `docs/SECURITY.md`。

@@ -118,6 +118,7 @@ window.__ModuleLoader__.load({
         length: '{n} characters',
         what: 'A shared secret between frps and frpc. Nothing generates it automatically: whoever runs the server writes it into frps.toml as auth.token, and every client must repeat it exactly. Read it on the server with: grep -i auth.token /path/to/frps.toml',
         short: 'Only {n} characters are stored. An frp shared secret is usually 32-64 characters, so the paste may have been truncated.',
+        badKey: 'Internal error: the credential key is not valid for this DSH version, so the token cannot be stored or read. Please update the plugin.',
       },
       quick: {
         title: 'Four steps to a working tunnel',
@@ -232,6 +233,7 @@ window.__ModuleLoader__.load({
         length: '{n} 个字符',
         what: 'frp token 是 frps 与 frpc 之间的共享密钥，不是插件或 DSH 生成的：它由运维者在服务器的 frps.toml 里写进 auth.token，客户端必须填完全一样的一串。取法：登录服务器后执行 grep -i auth.token data/frps/frps.toml',
         short: '当前保存的密钥只有 {n} 个字符。frp 的共享密钥通常是 32–64 个字符，请确认粘贴时没有漏掉后半段。',
+        badKey: '内部错误：当前 DSH 版本不接受本插件使用的凭据键，密钥无法读取或保存。请更新插件。',
       },
       quick: {
         title: '四步跑通',
@@ -963,6 +965,9 @@ window.__ModuleLoader__.load({
             h(Button, { primary: true, disabled: secret === '' || busy !== '', onClick: () => void run('token', async () => { await api('/token', { token: secret }); setSecret(''); return t('saved') }, t('saved')) }, t('save')),
             h(Button, { tone: 'danger', disabled: busy !== '', onClick: () => void run('tokenClear', async () => { await api('/token', { token: '' }); return t('notSet') }, t('notSet')) }, t('clear')),
           ),
+          status.token?.keyValid === false
+            ? h('p', { style: { ...STYLE.hint, color: COLORS.bad } }, t('token.badKey'))
+            : null,
           status.token?.configured && (status.token.length ?? 0) > 0 && (status.token.length ?? 0) < 16
             ? h('p', { style: { ...STYLE.hint, color: COLORS.warn } }, t('token.short', { n: status.token.length }))
             : null,

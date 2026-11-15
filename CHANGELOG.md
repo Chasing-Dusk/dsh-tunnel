@@ -14,6 +14,34 @@
 
 暂无。
 
+## [0.1.5] - 2026-11-16
+
+### ⚠ 修复：一个会让整个 DSH 无法启动的严重缺陷
+
+frp token 的记录键原来是 `dsh-tunnel:frp-token`，**不合法**。DSH 的凭据键必须是 `<scope>/<id>`，且两段都要匹配 `^[a-z][a-z0-9-]*$`（`@deepseek-ai/dsh-credentials` 的 `KEY_SEGMENT_PATTERN`）。
+
+失败链条：
+
+1. DSH 启动时 `LocalCredentialProvider.loadInitial` **解析整个凭据文件**；
+2. 遇到冒号键 → `parseCredentialKey` 抛 `TypeError: credential key "dsh-tunnel:frp-token" must be "<scope>/<id>"`；
+3. `credentials` 是必需服务，于是 `connection`、`authorization`、`mcp-manager` 等一排插件全部停在「等待服务」；
+4. 宿主启动失败，弹出「应用无法启动或已意外停止」。
+
+**只要在 0.1.0–0.1.4 上保存过一次 frp 密钥，DSH 之后每次启动都会失败。**
+
+修复内容：
+
+- 键改为 **`dsh-tunnel/frp-token`**；不再手写字符串，而是由 `credentialKey(scope, id)` 构造，两段都按 DSH 的语法校验。
+- 所有读写入口在触达存储之前先校验键；不合法时**失败关闭**（返回未配置）并在界面显示内部错误，绝不把不可解析的键写进共享存储。
+- 测试改用**会像真实存储一样抛错**的严格假存储（此前用的宽松假存储正好认可了我的错误假设），并断言键字面量；`test/control-api.test.js` 的假凭据也改为校验键。
+- 文档与独立页面同步更新键名；新增「DSH 完全打不开」的排查与手工修复步骤（插件无法自愈：能修的服务正是加载失败的那个）。
+
+### 迁移（如果你在旧版本上保存过密钥）
+
+退出 DSH → 编辑 `%USERPROFILE%\.dsh\.credentials.yaml`，把 `dsh-tunnel:frp-token` 改成 `dsh-tunnel/frp-token`（值不变），或整段删除 → 启动 DSH → 重新保存一次密钥。
+
+测试：105 个用例通过（新增 8 个凭据键用例）。
+
 ## [0.1.4] - 2026-11-15
 
 ### 修复

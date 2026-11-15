@@ -207,9 +207,7 @@ login to server success
 
 ## 8. 出错时怎么自助排查
 
-按这个顺序看，基本能定位在哪一段：
-
-1. **状态卡**：`DSH 监听` 有端口吗？`frpc 版本` 有值吗？「最近错误」写了什么？
+按这个顺序看，基本能定位在哪一段：1. **状态卡**：`DSH 监听` 有端口吗？`frpc 版本` 有值吗？「最近错误」写了什么？
 2. **日志卡**：展开看最后几行，对照第 4 步的失败对照表。
 3. **服务器侧**（需要服务器权限）：
    ```bash
@@ -225,3 +223,26 @@ login to server success
    - `502`：Nginx 到了 frps，但隧道没建立 → 回到第 4 步
    - `403` / `Untrusted`：隧道通了，但 DSH 不认这个 Host → 回到第 3 步（信任配置是否「已生效」）
    - `200` / 登录页：链路全通
+
+### DSH 完全打不开（设置页都进不去）
+
+若 DSH 弹窗提示「应用无法启动或已意外停止」，并在诊断报告里看到：
+
+```
+Failed plugins (1):
+  credentials
+    TypeError: credential key "dsh-tunnel:frp-token" must be "<scope>/<id>"
+```
+
+说明**凭据文件里有一条键不合法的记录**。DSH 在启动时解析凭据文档，一条坏记录会让 `credentials` 服务失败——而它是必需服务，于是整个 DSH 起不来（`connection` 等一排插件都在等它）。
+
+> 为什么会这样：DSH 的凭据键必须是 `<scope>/<id>`，两段都要匹配 `^[a-z][a-z0-9-]*$`。**0.1.0–0.1.4 用了冒号** `dsh-tunnel:frp-token`，不合法。0.1.5 起改为 `dsh-tunnel/frp-token`。
+> 插件自身没法自动修复：能修复它的那个服务，正是加载失败的那个。
+
+修复步骤：
+
+1. 退出 DSH。
+2. 打开 `%USERPROFILE%\.dsh\.credentials.yaml`。
+3. 把 `dsh-tunnel:frp-token` 改成 `dsh-tunnel/frp-token`（值保持不变），或把这一小段整体删掉。
+4. 启动 DSH；若删掉了记录，回到第 2 步重新保存一次密钥。
+

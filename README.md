@@ -136,7 +136,7 @@ $env:DSH_HOME   # 通常是 C:\Users\<你>\.dsh
 | `dataDir` | `''` | 空 = `$DSH_HOME/dsh-tunnel` |
 | `keepLogLines` | `400` | 状态页保留的 frpc 日志行数 |
 
-**frp token 不是配置项**：它只存在 DSH 凭据存储（键 `dsh-tunnel:frp-token`），界面只显示「已保存 / 未设置」，不会回显、不会导出、不会进日志。
+**frp token 不是配置项**：它只存在 DSH 凭据存储（键 `dsh-tunnel/frp-token`），界面只显示「已保存 / 未设置」，不会回显、不会导出、不会进日志。
 
 **三条铁律**（绝大多数失败都出在这里）：frp 版本两端一致；TLS 与 frps 的 `transport.tls.force` 对齐；`remotePort` 落在 frps 的 `allowPorts` 里。
 
@@ -207,7 +207,7 @@ $env:DSH_HOME   # 通常是 C:\Users\<你>\.dsh
 4. 插件页 **移除** `dsh-tunnel`。
 5. 清理（可选，凭据与生成物）：
    - 目录 `$DSH_HOME\dsh-tunnel`（含生成的 frpc 配置、日志、状态）
-   - DSH 凭据中的 `dsh-tunnel:frp-token`
+   - DSH 凭据中的 `dsh-tunnel/frp-token`
 6. 服务器侧按你自己的约定拆 frps / 站点（本项目不涉及）。
 
 禁用（而不是移除）插件时，`ctx.effect` 的清理会停掉 frpc，不会留下孤儿进程。
@@ -291,7 +291,7 @@ node --test        # 62 个用例：配置生成、补丁合并、脱敏、路�
 - 路由：`/dsh-tunnel`（页面）、`/dsh-tunnel/api/*`（JSON）。
 - 鉴权：`ctx.connection.requestRejection(req)` 必须返回 `undefined`；所有 `POST` 需要请求头 `x-dsh-tunnel: 1`。
 - 页面头：`Content-Security-Policy` 禁止外链、禁止被 iframe、禁止表单外发。
-- 凭据键：`dsh-tunnel:frp-token`（`kind: 'api-key'`）。
+- 凭据键：`dsh-tunnel/frp-token`（`kind: 'api-key'`）。
 - 数据目录：`$DSH_HOME/dsh-tunnel`（`frpc.toml`、`logs/frpc.log`、`state.json`）。
 - 版本兼容：DSH `>=0.2.2-rc.1 <0.3.0`；`@dsh-harmony/plugin` `0.4.x`（对应 App 0.4.10）。
 
@@ -313,6 +313,9 @@ node --test        # 62 个用例：配置生成、补丁合并、脱敏、路�
 **Q: 手机能登录但一会儿就断？** 多半是 Nginx 的 WebSocket/`proxy_read_timeout` 或请求体上限，属服务器侧配置。
 **Q: 重启 DSH 后手机要重登吗？** 不需要。签名 Cookie 的密钥持久化在 DSH_HOME，token 变了但 Cookie 仍有效（域名不变、未过期前提下）。
 **Q: 能多台电脑共用一个服务器吗？** 可以，每台用不同 `proxyName` 与 `remotePort`。
+**Q: DSH 突然起不来，报告里写着 `credential key "dsh-tunnel:frp-token" must be "<scope>/<id>"`？**
+0.1.0–0.1.4 把 token 存成了不合法的键（DSH 要求 `<scope>/<id>`，两段都匹配 `^[a-z][a-z0-9-]*$`），而 DSH 在**解析凭据文件时**就会因坏键失败，连带 `credentials` 必需服务失败，整个 DSH 无法启动。0.1.5 起改为 `dsh-tunnel/frp-token`。修复：退出 DSH → 编辑 `%USERPROFILE%\.dsh\.credentials.yaml`，把 `dsh-tunnel:frp-token` 改成 `dsh-tunnel/frp-token`（或整段删除）→ 启动 DSH → 重新保存一次密钥。详见 [SETUP-GUIDE §8](docs/SETUP-GUIDE.md#dsh-完全打不开设置页都进不去)。
+
 **Q: 支持 Linux/macOS 的 DSH 吗？** frpc 托管与信任补丁与平台无关；「开机自启」目前只实现 Windows 启动文件夹。
 
 ---

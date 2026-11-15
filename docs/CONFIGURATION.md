@@ -43,7 +43,7 @@
 | 它是什么 | frps 与 frpc 之间的**共享口令**，用来防止别人连你的隧道。 |
 | 谁生成 | **谁搭服务器谁定**。写在服务器 `frps.toml` 的 `auth.token` 里；frps 不会自动生成，插件和 DSH 也不会。 |
 | 客户端要求 | 每一台电脑的 frpc 必须填**完全一样**的一串，否则 frps 拒绝登录：`token in login doesn't match token from configuration`。 |
-| 存放位置 | DSH 凭据存储，记录键 `dsh-tunnel:frp-token`（`kind: api-key`）。不写入配置、不导出、不写日志、界面不回显。 |
+| 存放位置 | DSH 凭据存储，记录键 `dsh-tunnel/frp-token`（`kind: api-key`）。不写入配置、不导出、不写日志、界面不回显。 |
 | 界面显示 | 只显示**是否已保存**与**字符长度**。长度明显不对（如 8 个字符）会给出黄色提醒——这通常意味着粘贴时漏了后半段。 |
 | 从哪里取 | 服务器上 `grep -i 'auth.token' data/frps/frps.toml`；服务器是别人搭的就向他要。详见 [SETUP-GUIDE.md §2](SETUP-GUIDE.md#2-填frp-密钥)。 |
 | 轮换 | 服务器生成新值 → 改 `frps.toml` → `docker compose restart frps` → 本页重新保存密钥 → 「重启隧道」。隧道会短暂中断。 |
@@ -82,7 +82,7 @@ transport.tls.force = true
 |---|---|---|
 | 数据目录 | 默认 `$DSH_HOME\dsh-tunnel`（`C:\Users\<你>\.dsh\dsh-tunnel`） | 存放生成的 `frpc.toml`、`logs\frpc.log`、`state.json` |
 | `frpc.exe` 托管位置 | `$DSH_HOME\dsh-tunnel\bin\frpc.exe` | 想零配置就用这个位置；杀毒软件请把该**目录**加入信任区 |
-| frp token | DSH 凭据存储，键 `dsh-tunnel:frp-token` | 不写入配置、不导出、不写日志、界面不回显 |
+| frp token | DSH 凭据存储，键 `dsh-tunnel/frp-token` | 不写入配置、不导出、不写日志、界面不回显 |
 | DSH 访问密钥 | 不落盘 | 属于当前 DSH 进程，每次重启都变；点「显示访问密钥」时现取现用 |
 
 ---

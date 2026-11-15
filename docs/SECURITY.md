@@ -17,7 +17,7 @@
 
 ### 2.1 密钥最小化
 
-- frp token：只存在 **DSH 凭据存储**（键 `dsh-tunnel:frp-token`，`kind: api-key`），通过官方 `ctx.credentials` 读写。
+- frp token：只存在 **DSH 凭据存储**（键 `dsh-tunnel/frp-token`，`kind: api-key`），通过官方 `ctx.credentials` 读写。
   - 不进插件配置、不进 profile 的 `cordis.patch.yml`、不进导出的 JSON。
   - 界面只显示「已保存 / 未设置」，接口从不返回明文。
 - DSH 访问密钥：**不落盘、不缓存、不写日志**。只有控制页显式请求 `/api/login-info` 时，通过官方 `connection.authenticatedUrl()` 现取现用，响应带 `Cache-Control: no-store`。

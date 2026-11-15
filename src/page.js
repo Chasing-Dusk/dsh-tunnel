@@ -359,7 +359,7 @@ export function renderPage({ version = '', pluginId = 'dsh-tunnel' } = {}) {
 
   <section class="card">
     <h2>卸载与拆除</h2>
-    <p class="muted small">顺序：停用隧道 → 移除启动项 → 恢复默认信任配置 → 在插件页移除 dsh-tunnel → 清理 <code>$DSH_HOME/dsh-tunnel</code> 与 DSH 凭据中的 <code>dsh-tunnel:frp-token</code>。</p>
+    <p class="muted small">顺序：停用隧道 → 移除启动项 → 恢复默认信任配置 → 在插件页移除 dsh-tunnel → 清理 <code>$DSH_HOME/dsh-tunnel</code> 与 DSH 凭据中的 <code>dsh-tunnel/frp-token</code>。</p>
   </section>
 </main>
 <div class="toast" id="toast"></div>

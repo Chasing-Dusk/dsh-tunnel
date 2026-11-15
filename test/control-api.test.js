@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TunnelControl } from '../src/control.js'
+import { FRP_TOKEN_KEY, isValidCredentialKey } from '../src/credentials.js'
 import { normalizeConfig } from '../src/config-values.js'
 import { ScrubLog } from '../src/logs.js'
 
@@ -52,16 +53,30 @@ function makeControl({ config = {}, admit = true, editor, credentials, fiberEntr
     },
   }
   const store = new Map()
+  // The real store validates keys while loading its document and throws on a
+  // bad one, which aborts the whole DSH startup. Mirror that here so this
+  // suite fails if the plugin ever addresses a malformed key again.
+  const checkKey = (key) => {
+    if (!isValidCredentialKey(key)) throw new TypeError(`credential key "${key}" must be "<scope>/<id>"`)
+  }
   const fakeCredentials = credentials ?? {
-    readRecord: async (key) => (store.has(key) ? { kind: 'api-key', key: store.get(key) } : undefined),
-    describeRecord: async (key) => ({ configured: store.has(key), writable: true }),
+    readRecord: async (key) => {
+      checkKey(key)
+      return store.has(key) ? { kind: 'api-key', key: store.get(key) } : undefined
+    },
+    describeRecord: async (key) => {
+      checkKey(key)
+      return { configured: store.has(key), writable: true }
+    },
     modifyRecord: async (key, mutate) => {
+      checkKey(key)
       const next = await mutate(store.has(key) ? { kind: 'api-key', key: store.get(key) } : undefined)
       calls.credentialWrites.push([key, next])
       if (next !== undefined) store.set(key, next.key)
       return next
     },
     deleteRecord: async (key) => {
+      checkKey(key)
       calls.credentialWrites.push([key, undefined])
       store.delete(key)
     },
@@ -185,7 +200,10 @@ test('the frp token is write-only from the API surface', async () => {
 
   const accepted = await send(control, { method: 'POST', url: '/dsh-tunnel/api/token', body: JSON.stringify({ token: 'a-proper-token-value' }) })
   assert.equal(accepted.status, 200)
-  assert.equal(store.get('dsh-tunnel:frp-token'), 'a-proper-token-value')
+  assert.equal(store.get(FRP_TOKEN_KEY), 'a-proper-token-value')
+  // The literal is what shipped a colon once; pin it to the DSH grammar here
+  // too, so it cannot drift back.
+  assert.equal(FRP_TOKEN_KEY, 'dsh-tunnel/frp-token')
 
   const status = await send(control, { url: '/dsh-tunnel/api/status' })
   assert.equal(status.body.token.configured, true)
