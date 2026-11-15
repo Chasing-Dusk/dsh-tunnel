@@ -483,10 +483,13 @@ window.__ModuleLoader__.load({
         for (let attempt = 0; attempt < 24; attempt += 1) {
           await new Promise((resolve) => window.setTimeout(resolve, 700))
           try {
+            // A failure here must not count as success: useStatus swallows its
+            // own errors, so probe the API directly.
+            await api('/status')
             await reload()
             return true
           } catch {
-            // the plugin is restarting
+            // the plugin is still restarting
           }
         }
         return false
@@ -514,8 +517,10 @@ window.__ModuleLoader__.load({
           if (field.comma) {
             payload[field.key] = String(value ?? '').split(/[,\n]/).map((item) => item.trim()).filter(Boolean)
           } else if (field.kind === 'number') {
-            const parsed = Number.parseInt(String(value ?? ''), 10)
-            payload[field.key] = Number.isFinite(parsed) ? parsed : 0
+            // An empty or malformed number must leave the stored value alone
+            // rather than clamp to a nonsense port.
+            const parsed = Number.parseInt(String(value ?? '').trim(), 10)
+            if (Number.isFinite(parsed)) payload[field.key] = parsed
           } else {
             payload[field.key] = String(value ?? '').trim()
           }
@@ -536,7 +541,7 @@ window.__ModuleLoader__.load({
         const ok = await confirmAfterReload()
         setBusy('')
         if (ok) show(t('saved'))
-        else show(`${t('saved')}: ? ${saveError ? saveError.message : ''}`, true)
+        else show(`${t('state.error')}: ${saveError ? saveError.message : 'no answer from the plugin'}`, true)
       }
 
       const reveal = async () => {
@@ -579,9 +584,10 @@ window.__ModuleLoader__.load({
         try {
           const parsed = JSON.parse(await file.text())
           const result = await api('/import', { document: parsed })
-          show(result.warnings && result.warnings.length ? result.warnings.join('; ') : t('saved'))
           setForm(null)
-          await confirmAfterReload()
+          const applied = await confirmAfterReload()
+          const detail = result.warnings && result.warnings.length ? ` (${result.warnings.join('; ')})` : ''
+          show(applied ? `${t('saved')}${detail}` : `${t('state.error')}: no answer from the plugin${detail}`, !applied)
         } catch (failure) {
           show(String(failure.message || failure), true)
         } finally {
