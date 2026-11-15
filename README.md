@@ -302,3 +302,5 @@ node --test        # 62 个用例：配置生成、补丁合并、脱敏、路�
 
 - 版本策略见 [CHANGELOG.md](CHANGELOG.md)：语义化版本，`0.x` 期间次要版本可能带破坏性变更。
 - License: MIT。内置图标为本项目原创。
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
