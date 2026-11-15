@@ -113,6 +113,8 @@ $env:DSH_HOME   # 通常是 C:\Users\<你>\.dsh
 
 控制页、profile 的 `cordis.patch.yml` 或插件管理页都可以改。**默认值全部是惰性的**：没有服务器、没有域名、隧道关闭。
 
+> 每一项的**取值格式、可抄的示例、常见写错方式、失败信息对照表**见 **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**。下面只是速查。
+
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `enabled` | `false` | 随 DSH 启动自动拉起隧道 |
@@ -135,6 +137,8 @@ $env:DSH_HOME   # 通常是 C:\Users\<你>\.dsh
 | `keepLogLines` | `400` | 状态页保留的 frpc 日志行数 |
 
 **frp token 不是配置项**：它只存在 DSH 凭据存储（键 `dsh-tunnel:frp-token`），界面只显示「已保存 / 未设置」，不会回显、不会导出、不会进日志。
+
+**三条铁律**（绝大多数失败都出在这里）：frp 版本两端一致；TLS 与 frps 的 `transport.tls.force` 对齐；`remotePort` 落在 frps 的 `allowPorts` 里。
 
 ---
 

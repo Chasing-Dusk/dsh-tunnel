@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FrpcSupervisor, STABLE_WINDOW_MS, nextBackoff, parseFrpcVersion, parseTasklistCsv } from '../src/frpc.js'
+import { FrpcSupervisor, STABLE_WINDOW_MS, describeSpawnFailure, nextBackoff, parseFrpcVersion, parseTasklistCsv } from '../src/frpc.js'
 import { ScrubLog } from '../src/logs.js'
 import { frpcExecutableName } from '../src/paths.js'
 import { normalizeConfig } from '../src/config-values.js'
@@ -54,6 +54,17 @@ test('tasklist CSV rows are parsed for the stale-process check', () => {
     { name: 'other.exe', pid: 7 },
   ])
   assert.deepEqual(parseTasklistCsv('INFO: no tasks'), [])
+})
+
+test('an execution block is explained instead of passed through raw', () => {
+  // Observed on Windows: a scanner holds a freshly written frpc.exe, so the
+  // first CreateProcess fails with EACCES and a retry succeeds.
+  for (const raw of ['spawn EACCES', 'spawn EPERM', 'Access is denied.', '拒绝访问。']) {
+    const message = describeSpawnFailure(raw)
+    assert.match(message, /antivirus|trust list/i, raw)
+  }
+  assert.match(describeSpawnFailure('spawn ENOENT'), /disappeared/)
+  assert.equal(describeSpawnFailure('some other failure'), 'some other failure')
 })
 
 test('a supervised frpc reports its connection and recovers from a crash', async () => {
@@ -200,8 +211,35 @@ test('an authentication failure is surfaced as an actionable error', async () =>
   }
 })
 
-test('a crash after a stable run starts the backoff ladder over', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-tunnel-sup-stable-'))
+test('a TLS handshake failure is explained, not left raw', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-tunnel-sup-tls-'))
+  let child = null
+  const spawn = (command, args) => {
+    if (args[0] === '-v') return new FakeChild(1, ['0.61.1'], { exitAfterOutput: true })
+    child = new FakeChild(12, ['connect to server error: tls: first record does not look like a TLS handshake'])
+    return child
+  }
+  try {
+    const dataDir = join(root, 'data')
+    mkdirSync(join(dataDir, 'bin'), { recursive: true })
+    writeFileSync(join(dataDir, 'bin', frpcExecutableName()), 'stub')
+    const supervisor = new FrpcSupervisor({
+      config: normalizeConfig({ serverAddr: 'vps.example.com', publicUrl: 'https://x.example.com', restartBaseDelayMs: 600000, restartMaxDelayMs: 600000 }),
+      dataDir,
+      spawn,
+      log: new ScrubLog({ limit: 20 }),
+      origin: () => 'http://127.0.0.1:13162',
+      token: async () => 'the-frp-token',
+    })
+    await supervisor.start({ reason: 'test' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    assert.match(supervisor.snapshot().lastError, /TLS handshake failed/)
+    await supervisor.stop('done')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+test('a crash after a stable run starts the backoff ladder over', async () => {  const root = mkdtempSync(join(tmpdir(), 'dsh-tunnel-sup-stable-'))
   let child = null
   const spawn = (command, args) => {
     if (args[0] === '-v') return new FakeChild(1, ['0.61.1'], { exitAfterOutput: true })

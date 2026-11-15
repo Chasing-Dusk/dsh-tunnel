@@ -26,7 +26,26 @@ export const STABLE_WINDOW_MS = 30000
 /** Log lines that mean the tunnel is actually carrying traffic. */
 const LOGIN_SUCCESS = /login to server success/i
 const PROXY_SUCCESS = /start proxy success/i
-const AUTH_FAILURE = /authorization failed|token in login doesn't match|authentication failed/i
+const AUTH_FAILURE = /authorization failed|token in login doesn't match|authentication failed|token in login does not match/i
+const TLS_FAILURE = /tls handshake|first record does not look like a tls|bad certificate|certificate signed by unknown authority|tls: /i
+
+/**
+ * Turns a spawn failure into something a user can act on.
+ *
+ * The common Windows case is not a code bug: an antivirus scanner holds a
+ * freshly written executable open, so the first launch fails with "Access is
+ * denied" and an immediate retry succeeds.
+ * @param {string} message - the raw spawn error text.
+ * @returns {string} an actionable message.
+ */
+export function describeSpawnFailure(message) {
+  const text = String(message ?? '')
+  if (/EACCES|EPERM|access is denied|拒绝访问/i.test(text)) {
+    return 'frpc could not be started: antivirus or file permissions blocked it. Add the plugin data directory to your antivirus trust list, then press Restart (the first launch after a download is often blocked while it is scanned).'
+  }
+  if (/ENOENT/i.test(text)) return 'frpc could not be started: the binary disappeared, check the configured path.'
+  return text
+}
 
 /** Parses the version out of `frpc -v` output. */
 export function parseFrpcVersion(output) {
@@ -260,7 +279,8 @@ export class FrpcSupervisor {
         stdio: ['ignore', 'pipe', 'pipe'],
       })
     } catch (error) {
-      this.lastError = scrub(error instanceof Error ? error.message : String(error), [this._token])
+      this.lastError = describeSpawnFailure(scrub(error instanceof Error ? error.message : String(error), [this._token]))
+      this.log.note(this.lastError)
       this.state = 'error'
       this.emit()
       this.scheduleRestart()
@@ -275,8 +295,9 @@ export class FrpcSupervisor {
     child.stdout?.on('data', (chunk) => this.consume(chunk, 'out'))
     child.stderr?.on('data', (chunk) => this.consume(chunk, 'err'))
     child.on?.('error', (error) => {
-      this.lastError = scrub(error instanceof Error ? error.message : String(error), [this._token])
+      this.lastError = describeSpawnFailure(scrub(error instanceof Error ? error.message : String(error), [this._token]))
       this.log.note(`frpc process error: ${this.lastError}`)
+      this.emit()
     })
     child.on?.('exit', (code, signal) => {
       if (generation !== this.generation) return
@@ -302,7 +323,10 @@ export class FrpcSupervisor {
       this.emit()
     }
     if (AUTH_FAILURE.test(scrubbed)) {
-      this.lastError = 'frps rejected the login: check the frp token and TLS settings'
+      this.lastError = 'frps rejected the login: the frp token does not match the server. Re-enter the token.'
+      this.emit()
+    } else if (TLS_FAILURE.test(scrubbed)) {
+      this.lastError = 'TLS handshake failed: the server requires (or rejects) transport TLS. Check the "Encrypt the frpc connection" option and tlsServerName.'
       this.emit()
     }
   }

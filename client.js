@@ -78,6 +78,14 @@ window.__ModuleLoader__.load({
         tls: 'Encrypt the frpc connection',
         autoApplyTrust: 'Write the DSH trust patch automatically',
       },
+      lbl: {
+        dsh: 'DSH listening on',
+        publicUrl: 'Public address',
+        localPort: 'Local port',
+        frpcVersion: 'frpc version',
+        frpcPath: 'frpc path',
+        lastError: 'Last error',
+      },
       hint: {
         status: 'The frpc configuration is rebuilt from the port DSH actually bound, on every start.',
         settings: 'Saving restarts this plugin and rebuilds the frpc configuration.',
@@ -105,6 +113,7 @@ window.__ModuleLoader__.load({
       trustState: { live: 'applied and live', pending: 'restart DSH to apply', none: 'not applied' },
       loginPlaceholder: 'Set the public address first',
       accessKey: 'Access key',
+      loginUnconfigured: 'No public address is configured yet, so this key only unlocks this machine. It belongs to the running DSH process and changes every time DSH starts.',
       hidden: 'hidden',
       keyPresent: 'Press "Show access key" to reveal it.',
       frpcMissing: 'Put frpc(.exe) in the plugin data directory, or set an explicit path.',
@@ -167,6 +176,14 @@ window.__ModuleLoader__.load({
         tls: '启用传送 TLS',
         autoApplyTrust: '自动写入 DSH 信任配置',
       },
+      lbl: {
+        dsh: 'DSH 监听',
+        publicUrl: '公网地址',
+        localPort: '本机端口',
+        frpcVersion: 'frpc 版本',
+        frpcPath: 'frpc 路径',
+        lastError: '最近错误',
+      },
       hint: {
         status: '每次启动都会按 DSH 实际监听的端口重新生成 frpc 配置。',
         settings: '保存会重新加载插件并重建 frpc 配置。',
@@ -194,6 +211,7 @@ window.__ModuleLoader__.load({
       trustState: { live: '已生效', pending: '需要重启 DSH', none: '未写入' },
       loginPlaceholder: '请先设置公网地址',
       accessKey: '访问密钥',
+      loginUnconfigured: '尚未配置公网地址，这串密钥目前只能用于本机访问。它属于当前运行中的 DSH 进程，每次 DSH 重启都会变。',
       hidden: '已隐藏',
       keyPresent: '点「显示访问密钥」查看。',
       frpcMissing: '请把 frpc(.exe) 放到插件数据目录，或填写明确路径。',
@@ -343,18 +361,39 @@ window.__ModuleLoader__.load({
         width: '100%',
         boxSizing: 'border-box',
       },
+      // A translucent neutral surface plus inherited text: this reads on a
+      // light and a dark panel without the plugin guessing a contrast pair.
+      // Buttons are plain divs so neither a user-agent nor the shell's own
+      // `button` rules can repaint them.
       button: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
         font: 'inherit',
         fontSize: 12,
+        fontWeight: 500,
+        lineHeight: 1.6,
         padding: '5px 12px',
         borderRadius: 7,
-        border: `1px solid ${COLORS.line}`,
-        background: 'transparent',
-        color: COLORS.text,
+        border: '1px solid rgba(128,128,128,0.45)',
+        background: 'rgba(128,128,128,0.16)',
+        color: 'inherit',
         cursor: 'pointer',
+        userSelect: 'none',
+        whiteSpace: 'nowrap',
       },
-      buttonPrimary: { background: COLORS.brand, borderColor: COLORS.brand, color: '#fff' },
-      buttonDanger: { color: COLORS.bad, borderColor: COLORS.bad },
+      buttonPrimary: {
+        background: 'rgba(47,111,237,0.22)',
+        borderColor: 'rgba(47,111,237,0.70)',
+        color: 'inherit',
+        fontWeight: 600,
+      },
+      buttonDanger: {
+        background: 'rgba(214,69,56,0.16)',
+        borderColor: 'rgba(214,69,56,0.70)',
+        color: COLORS.bad,
+      },
       badge: {
         display: 'inline-flex',
         alignItems: 'center',
@@ -389,8 +428,31 @@ window.__ModuleLoader__.load({
       const style = { ...STYLE.button }
       if (primary) Object.assign(style, STYLE.buttonPrimary)
       if (tone === 'danger') Object.assign(style, STYLE.buttonDanger)
-      if (disabled) style.opacity = 0.45
-      return h('button', { type: 'button', style, onClick, disabled: disabled === true, title: title ?? undefined }, children)
+      if (disabled === true) {
+        style.opacity = 0.45
+        style.cursor = 'not-allowed'
+      }
+      const activate = () => {
+        if (disabled !== true && typeof onClick === 'function') onClick()
+      }
+      return h(
+        'div',
+        {
+          role: 'button',
+          tabIndex: disabled === true ? -1 : 0,
+          'aria-disabled': disabled === true ? 'true' : undefined,
+          title: title ?? undefined,
+          style,
+          onClick: activate,
+          onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              activate()
+            }
+          },
+        },
+        children,
+      )
     }
 
     function Badge({ children, level }) {
@@ -667,12 +729,12 @@ window.__ModuleLoader__.load({
           h(
             'dl',
             { style: STYLE.kv },
-            h(KV, { key: 'origin', label: 'DSH', value: status.dsh?.origin }),
-            h(KV, { key: 'public', label: t('field.publicUrl'), value: status.tunnel?.publicUrl }),
-            h(KV, { key: 'local', label: t('remotePort'), value: runtime.localPort ? `127.0.0.1:${runtime.localPort}` : '—' }),
-            h(KV, { key: 'version', label: 'frpc', value: runtime.frpcVersion || t('unknown') }),
-            h(KV, { key: 'binary', label: 'frpc', value: runtime.binaryPath || t('frpcMissing') }),
-            h(KV, { key: 'error', label: t('state.error'), value: runtime.lastError || t('none') }),
+            h(KV, { key: 'origin', label: t('lbl.dsh'), value: status.dsh?.origin }),
+            h(KV, { key: 'public', label: t('lbl.publicUrl'), value: status.tunnel?.publicUrl }),
+            h(KV, { key: 'local', label: t('lbl.localPort'), value: runtime.localPort ? `127.0.0.1:${runtime.localPort}` : '—' }),
+            h(KV, { key: 'version', label: t('lbl.frpcVersion'), value: runtime.frpcVersion || t('unknown') }),
+            h(KV, { key: 'binary', label: t('lbl.frpcPath'), value: runtime.binaryPath || t('frpcMissing') }),
+            h(KV, { key: 'error', label: t('lbl.lastError'), value: runtime.lastError || t('none') }),
           ),
         ),
 
@@ -773,6 +835,7 @@ window.__ModuleLoader__.load({
             h(KV, { key: 'url', label: t('field.publicUrl'), value: status.tunnel?.publicUrl || t('loginPlaceholder') }),
             h(KV, { key: 'key', label: t('accessKey'), value: accessKey || t('keyPresent') }),
           ),
+          status.tunnel?.publicUrl ? null : h('p', { style: { ...STYLE.hint, color: COLORS.warn } }, t('loginUnconfigured')),
           h(
             'div',
             { style: { ...STYLE.row, marginTop: 8 } },
