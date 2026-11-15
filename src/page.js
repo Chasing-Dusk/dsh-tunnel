@@ -150,19 +150,25 @@ async function saveConfig(event) {
   }
   const hosts = $('trustedHosts').value.split(/[,\\n]/).map((x) => x.trim()).filter(Boolean);
   payload.trustedHosts = hosts;
-  try {
-    await call('/config', payload);
-    toast('已保存，插件正在重新加载…');
-    await waitForReload();
-  } catch (error) { toast('保存失败：' + error.message, true); }
+  // Saving restarts this plugin, which can cut this very response. Treat a
+  // transport error as "unknown", then read the live state back instead of
+  // claiming the save failed when it actually took effect.
+  let error = null;
+  try { await call('/config', payload); } catch (caught) { error = caught; }
+  const applied = await waitForReload();
+  if (!applied) toast('保存后未能确认生效，请刷新页面检查' + (error ? '：' + error.message : ''), true);
 }
 
 async function waitForReload() {
   for (let i = 0; i < 30; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, 700));
-    try { await refresh(); toast('已生效'); return; } catch (error) { /* still reloading */ }
+    try {
+      await refresh();
+      toast('已保存并生效');
+      return true;
+    } catch (error) { /* still reloading */ }
   }
-  toast('保存后未能连上 DSH，请刷新页面确认', true);
+  return false;
 }
 
 async function saveToken(event) {

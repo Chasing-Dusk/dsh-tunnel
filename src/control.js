@@ -116,7 +116,6 @@ export class TunnelControl {
     this.patchState = patchState
     this.reloadSelf = reloadSelf
     this.readConfig = readConfig
-    this.relogin = undefined
   }
 
   /** The connection service, when this profile has one. */
@@ -242,9 +241,9 @@ export class TunnelControl {
         cookieMaxAgeDays: config.cookieMaxAgeDays,
       })
       base.trustedHosts = publicHostList(plan.next.trustedHosts)
-      base.plannedHosts = publicHostList(plan.next.trustedHosts)
       base.rejected = plan.rejected
       base.frozenExpression = plan.frozenExpression
+      base.upToDate = isDeepStrictEqual(plan.next, row.override)
       const host = publicHostOf(config.publicUrl)
       base.pendingRestart = host !== '' && !base.effective
       return base
