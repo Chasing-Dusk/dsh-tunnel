@@ -24,6 +24,24 @@ export function escapeRegExp(text) {
 }
 
 /**
+ * Removes ANSI escape sequences.
+ *
+ * frpc colorizes its console output, and those bytes reach a plain `<pre>`
+ * where they render as `[1;34m` noise. Stripping at ingestion keeps both the
+ * control page and the log file readable.
+ * @param {string} text - text that may contain escape sequences.
+ * @returns {string} plain text.
+ */
+export function stripAnsi(text) {
+  if (typeof text !== 'string' || text === '') return ''
+  // CSI (colors, cursor), OSC (titles/hyperlinks) and lone two-byte escapes.
+  return text
+    .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
+    .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, '')
+    .replace(/\u001b[@-Z\\-_]/g, '')
+}
+
+/**
  * Replaces every occurrence of every known secret with a mask. Applied to
  * frpc output before it is buffered, written to disk, or returned by the API.
  * @param {string} text - untrusted text.
@@ -61,7 +79,7 @@ export function stripUrlQueries(text) {
  * @returns {string} safe text.
  */
 export function scrub(text, secrets = []) {
-  return stripUrlQueries(redactSecrets(typeof text === 'string' ? text : String(text ?? ''), secrets))
+  return stripUrlQueries(stripAnsi(redactSecrets(typeof text === 'string' ? text : String(text ?? ''), secrets)))
 }
 
 /**

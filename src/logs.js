@@ -8,6 +8,18 @@ import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from 'nod
 import { dirname } from 'node:path'
 import { scrub } from './secrets.js'
 
+/** A line that already carries its own date-time prefix (frpc's own format). */
+const HAS_TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/
+
+/** Local wall-clock stamp matching frp's own format, so lines read alike. */
+export function localStamp(now = new Date()) {
+  const pad = (value, width = 2) => String(value).padStart(width, '0')
+  return (
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`
+  )
+}
+
 /** A fixed-size ring of text lines. */
 export class LineRing {
   /**
@@ -64,13 +76,18 @@ export class ScrubLog {
 
   /**
    * Records one already-split line.
+   *
+   * frpc already stamps its own lines and colors them; a plain `<pre>` would
+   * show those escapes as `[1;34m` junk and a second timestamp would double
+   * every line. So: strip escapes, and only add a stamp when the line has
+   * none.
    * @param {string} line - raw line.
    * @param {string} [stream] - `out` or `err`.
    */
   append(line, stream = 'out') {
-    const text = scrub(line, this.secrets())
+    const text = scrub(line, this.secrets()).replace(/\s+$/, '')
     if (text.trim() === '') return
-    const stamped = `${new Date().toISOString()} ${stream === 'err' ? 'E' : 'I'} ${text}`.trimEnd()
+    const stamped = HAS_TIMESTAMP.test(text) ? text : `${localStamp()} ${stream === 'err' ? 'E' : 'I'} ${text}`
     this.ring.push(stamped)
     this.flushFile(stamped)
   }

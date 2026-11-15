@@ -41,7 +41,8 @@ window.__ModuleLoader__.load({
       revert: 'Restore defaults',
       reveal: 'Show access key',
       copy: 'Copy',
-      copied: 'Copied',
+      copied: 'Copied to clipboard',
+      copyFailed: 'Copy failed: select the text and copy it manually',
       export: 'Copy config JSON',
       importLabel: 'Import config',
       create: 'Create startup entry',
@@ -110,6 +111,7 @@ window.__ModuleLoader__.load({
         'invalid-config': 'incomplete',
         stoppedByUser: 'stopped by you',
       },
+      startup: { created: 'created', none: 'not created' },
       token: {
         configured: 'saved',
         missing: 'missing',
@@ -153,7 +155,8 @@ window.__ModuleLoader__.load({
       revert: '恢复默认',
       reveal: '显示访问密钥',
       copy: '复制',
-      copied: '已复制',
+      copied: '已复制到剪贴板',
+      copyFailed: '复制失败：请手动选中文本复制',
       export: '复制配置 JSON',
       importLabel: '导入配置',
       create: '创建启动项',
@@ -222,6 +225,7 @@ window.__ModuleLoader__.load({
         'invalid-config': '配置不完整',
         stoppedByUser: '已被你停止',
       },
+      startup: { created: '已创建', none: '未创建' },
       token: {
         configured: '已保存',
         missing: '未设置',
@@ -289,6 +293,93 @@ window.__ModuleLoader__.load({
         const raw = words[key] ?? flat.en[key] ?? key
         if (!vars) return raw
         return String(raw).replace(/\{(\w+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match))
+      }
+    }
+
+    // ── transient feedback ──────────────────────────────────────────────────
+    // Rendered on document.body rather than inside the panel: the settings
+    // content column scrolls, so an inline message at its top is invisible
+    // when the user is down at the login card, which is exactly where people
+    // press "copy" and expect an acknowledgement.
+    let toastNode = null
+    let toastTimer = undefined
+
+    /** Shows a short-lived toast at the bottom of the window. */
+    function showToast(text, bad) {
+      if (typeof document === 'undefined' || typeof document.createElement !== 'function') return
+      if (toastNode === null) {
+        toastNode = document.createElement('div')
+        toastNode.setAttribute('role', 'status')
+        Object.assign(toastNode.style, {
+          position: 'fixed',
+          left: '50%',
+          bottom: '28px',
+          zIndex: '2147483001',
+          transform: 'translateX(-50%) translateY(12px)',
+          opacity: '0',
+          transition: 'opacity 180ms ease, transform 180ms ease',
+          maxWidth: 'min(620px, calc(100vw - 48px))',
+          padding: '9px 16px',
+          borderRadius: '10px',
+          color: '#fff',
+          fontSize: '12px',
+          lineHeight: '1.6',
+          textAlign: 'center',
+          boxShadow: '0 12px 34px rgba(0,0,0,0.38)',
+          pointerEvents: 'none',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif',
+        })
+        document.body.appendChild(toastNode)
+      }
+      toastNode.textContent = String(text ?? '')
+      toastNode.style.background = bad === true ? 'rgba(192,57,43,0.96)' : 'rgba(28,30,34,0.95)'
+      window.requestAnimationFrame(() => {
+        if (toastNode === null) return
+        toastNode.style.opacity = '0.98'
+        toastNode.style.transform = 'translateX(-50%) translateY(0)'
+      })
+      if (toastTimer !== undefined) window.clearTimeout(toastTimer)
+      toastTimer = window.setTimeout(() => {
+        if (toastNode === null) return
+        toastNode.style.opacity = '0'
+        toastNode.style.transform = 'translateX(-50%) translateY(12px)'
+      }, bad === true ? 6000 : 2600)
+    }
+
+    /** Removes the toast node; called when the plugin is disposed. */
+    function removeToast() {
+      if (toastTimer !== undefined) {
+        window.clearTimeout(toastTimer)
+        toastTimer = undefined
+      }
+      if (toastNode !== null && toastNode.parentNode) toastNode.parentNode.removeChild(toastNode)
+      toastNode = null
+    }
+
+    /** Copies text, falling back when the async clipboard is unavailable. */
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(text)
+          return true
+        }
+      } catch {
+        // fall through to the legacy path
+      }
+      try {
+        const area = document.createElement('textarea')
+        area.value = text
+        area.setAttribute('readonly', '')
+        area.style.position = 'fixed'
+        area.style.top = '-1000px'
+        area.style.opacity = '0'
+        document.body.appendChild(area)
+        area.select()
+        const ok = typeof document.execCommand === 'function' ? document.execCommand('copy') : false
+        document.body.removeChild(area)
+        return ok === true
+      } catch {
+        return false
       }
     }
 
@@ -558,23 +649,12 @@ window.__ModuleLoader__.load({
       { key: 'trustedHosts', kind: 'text', comma: true },
     ]
 
-    /** One transient message inside the panel. */
-    function useNotice() {
-      const [notice, setNotice] = useState(null)
-      const timer = useRef(undefined)
-      const show = useCallback((text, bad) => {
-        setNotice({ text, bad: bad === true })
-        if (timer.current !== undefined) window.clearTimeout(timer.current)
-        timer.current = window.setTimeout(() => setNotice(null), 6000)
-      }, [])
-      useEffect(() => () => { if (timer.current !== undefined) window.clearTimeout(timer.current) }, [])
-      return [notice, show]
-    }
+
 
     /** The whole control surface, shared by the settings page and the overlay. */
     function TunnelPanel({ t, active, onClose, embedded }) {
       const { status, error, loading, reload } = useStatus(active)
-      const [notice, show] = useNotice()
+      const show = showToast
       const [form, setForm] = useState(null)
       const [busy, setBusy] = useState('')
       const [secret, setSecret] = useState('')
@@ -671,19 +751,17 @@ window.__ModuleLoader__.load({
       }
 
       const copyKey = async () => {
-        try {
-          await navigator.clipboard.writeText(accessKey)
-          show(t('copied'))
-        } catch {
-          show('clipboard unavailable', true)
-        }
+        const ok = await copyText(accessKey)
+        if (ok) show(t('copied'))
+        else show(t('copyFailed'), true)
       }
 
       const exportJson = async () => {
         try {
           const document_ = await api('/export')
-          await navigator.clipboard.writeText(JSON.stringify(document_, null, 2))
-          show(t('copied'))
+          const ok = await copyText(JSON.stringify(document_, null, 2))
+          if (ok) show(t('copied'))
+          else show(t('copyFailed'), true)
         } catch (failure) {
           show(String(failure.message || failure), true)
         }
@@ -763,7 +841,6 @@ window.__ModuleLoader__.load({
         'div',
         { style: { ...STYLE.column, padding: embedded ? 0 : 16 } },
         header,
-        notice ? h('div', { style: { ...STYLE.card, color: notice.bad ? COLORS.bad : COLORS.ok } }, notice.text) : null,
         error ? h('div', { style: { ...STYLE.card, color: COLORS.bad } }, error) : null,
 
         h(
@@ -941,7 +1018,7 @@ window.__ModuleLoader__.load({
           h(
             'dl',
             { style: STYLE.kv },
-            h(KV, { key: 'state', label: t('status'), value: status.startup?.exists ? t('token.configured') : t('notSet') }),
+            h(KV, { key: 'state', label: t('status'), value: status.startup?.exists ? t('startup.created') : t('startup.none') }),
             h(KV, { key: 'path', label: '.lnk', value: status.startup?.path || t('unknown') }),
           ),
         ),
@@ -1161,6 +1238,7 @@ window.__ModuleLoader__.load({
           guard(t('uiError'), h(TunnelOverlay, { t })),
         )
         ctx.effect(() => () => {
+          removeToast()
           for (const dispose of disposers) {
             try {
               if (typeof dispose === 'function') dispose()
