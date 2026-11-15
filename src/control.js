@@ -26,6 +26,23 @@ const publicHostList = (value) => literalHosts(value)
 /** Route prefix owned by this plugin. */
 export const ROUTE_PREFIX = '/dsh-tunnel'
 
+/** Endpoints answered by either verb. */
+const GET_ENDPOINTS = new Set(['/status', '/export'])
+/** Endpoints that mutate state and therefore require a POST. */
+const POST_ENDPOINTS = new Set([
+  '/config',
+  '/token',
+  '/trust/apply',
+  '/trust/revert',
+  '/start',
+  '/stop',
+  '/restart',
+  '/login-info',
+  '/startup/create',
+  '/startup/remove',
+  '/import',
+])
+
 /** Largest JSON body accepted from the page. */
 const MAX_BODY_BYTES = 64 * 1024
 
@@ -422,7 +439,8 @@ export class TunnelControl {
       return
     }
     const url = new URL(req.url ?? '/', 'http://localhost')
-    const path = url.pathname
+    // `/dsh-tunnel`, `/dsh-tunnel/` and `/dsh-tunnel/index.html` all serve the page.
+    const path = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname
     if (path === ROUTE_PREFIX || path === `${ROUTE_PREFIX}/index.html`) {
       this.servePage(res)
       return
@@ -433,7 +451,12 @@ export class TunnelControl {
     }
     const endpoint = path.slice(`${ROUTE_PREFIX}/api`.length)
     const method = req.method ?? 'GET'
-    if (endpoint !== '/status' && endpoint !== '/export' && method !== 'POST') {
+    if (!GET_ENDPOINTS.has(endpoint) && !POST_ENDPOINTS.has(endpoint)) {
+      sendJson(res, 404, { error: 'not found' })
+      return
+    }
+    const allowed = GET_ENDPOINTS.has(endpoint) ? method === 'GET' || method === 'HEAD' : method === 'POST'
+    if (!allowed) {
       sendJson(res, 405, { error: 'method not allowed' })
       return
     }
