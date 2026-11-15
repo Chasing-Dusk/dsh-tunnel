@@ -66,13 +66,21 @@ https://github.com/LittleWorkhorseProMax/dsh-tunnel/releases/download/v0.1.0/dsh
 git clone https://github.com/LittleWorkhorseProMax/dsh-tunnel.git
 ```
 
-安装完成后该 bundle 会插入一行 `dsh-tunnel`；浏览器侧同时出现一个侧栏底部按钮「公网隧道」。
+安装完成后该 bundle 会插入一行 `dsh-tunnel`，浏览器侧同时出现两个入口。
 
 ### 3.3 打开控制页
 
-侧栏底部的图标按钮 → 在新标签页打开 `/dsh-tunnel/`。也可以直接访问 `http://127.0.0.1:<当前端口>/dsh-tunnel/`（端口见 DSH 窗口标题栏 / 启动日志）。
+有三个等价入口：
 
-控制页与 DSH 同源，因此复用你已有的登录 Cookie：没有新的账号密码。
+| 入口 | 位置 |
+|---|---|
+| **设置 → 公网隧道** | 设置面板左侧导航（推荐，常驻） |
+| **侧栏底部隧道图标** | 侧栏最下方、账户头之上；图标上的小圆点是隧道状态（灰=未连、黄=连接中、绿=已连接）。点击打开应用内浮层，再次点击或按 `Esc` 关闭 |
+| **直接 URL** | `http://127.0.0.1:<当前端口>/dsh-tunnel/`（端口见 DSH 启动日志），适合排障或换浏览器 |
+
+前两个入口都在 DSH 应用内，不新开窗口（桌面壳会拦截 `window.open`）。三个入口都与 DSH 同源，复用你已有的登录 Cookie：没有新的账号密码。
+
+> 单独访问 `/dsh-tunnel/` 页面仍保留，用于排障、迁移说明与"客户端模块没加载"时的兜底。
 
 ---
 
@@ -86,7 +94,11 @@ git clone https://github.com/LittleWorkhorseProMax/dsh-tunnel.git
 | **B. 指定路径** | 控制页「frpc 路径」填绝对路径 | 换机器后需重填（导出配置不含路径） |
 | **C. PATH** | 把 `frpc.exe` 所在目录加入 `PATH` | 插件会自动找到 |
 
-获取方式：从 frp 官方 release 下载与你服务器**同版本**的 Windows amd64 压缩包，解出 `frpc.exe`。校验下载完整性后放入上面的目录。
+获取方式：从 frp 官方 release 下载与你服务器**同版本**的 **Windows amd64** 压缩包（文件名形如 `frp_<版本>_windows_amd64.zip`），解出 `frpc.exe`。校验下载完整性后放入上面的目录。
+
+> 注意：`frp_<版本>_linux_amd64` 里的 `frpc` 是 Linux 二进制，Windows 上无法运行；请确认是 `windows_amd64`。
+>
+> 若杀毒软件（如火绒）把 `frpc.exe` 隔离过，把 **`%USERPROFILE%\.dsh\dsh-tunnel\bin`** 整个目录加入信任区，再从隔离区恢复，避免下次启动又被拦掉。插件本身不会联网下载任何二进制。
 
 ```powershell
 # 登录后恢复到 PATH 的方式示例（仅说明，无脚本依赖）

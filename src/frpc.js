@@ -178,6 +178,7 @@ export class FrpcSupervisor {
       this.lastError = this.binary.path
         ? `frpc not found at ${this.binary.path}`
         : 'frpc binary not found: place frpc under the plugin data directory or set frpcPath'
+      this.log.note(this.lastError)
       this.emit()
       return { ok: false, reason: this.lastError }
     }
@@ -200,6 +201,7 @@ export class FrpcSupervisor {
     if (token === '') {
       this.state = 'invalid-config'
       this.lastError = 'frp token is not set'
+      this.log.note('cannot start frpc: the frp token is not stored')
       this.emit()
       return { ok: false, reason: this.lastError }
     }
