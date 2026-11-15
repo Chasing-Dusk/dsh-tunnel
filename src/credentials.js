@@ -48,19 +48,26 @@ export async function writeFrpToken(credentials, token) {
 
 /**
  * Describes whether a token is stored, without exposing it.
- * @param {{describeRecord?: Function} | undefined} credentials - credential service.
- * @returns {Promise<{configured: boolean, writable: boolean}>} presence facts.
+ *
+ * `length` is included on purpose: a shared secret that is obviously too short
+ * is the most common paste mistake, and letting the user see its length (never
+ * its value) is how they catch it themselves.
+ * @param {{describeRecord?: Function, readRecord?: Function} | undefined} credentials - credential service.
+ * @returns {Promise<{configured: boolean, writable: boolean, length: number}>} presence facts.
  */
 export async function describeFrpToken(credentials) {
-  if (credentials === undefined || credentials === null || typeof credentials.describeRecord !== 'function') {
-    return { configured: false, writable: false }
-  }
+  if (credentials === undefined || credentials === null) return { configured: false, writable: false, length: 0 }
+  let writable = false
   try {
-    const info = await credentials.describeRecord(FRP_TOKEN_KEY)
-    return { configured: info?.configured === true, writable: info?.writable !== false }
+    if (typeof credentials.describeRecord === 'function') {
+      const info = await credentials.describeRecord(FRP_TOKEN_KEY)
+      writable = info?.writable !== false
+    }
   } catch {
-    return { configured: false, writable: false }
+    writable = false
   }
+  const value = await readFrpToken(credentials)
+  return { configured: value !== '', writable, length: value.length }
 }
 
 /**

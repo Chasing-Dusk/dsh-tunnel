@@ -21,6 +21,7 @@ window.__ModuleLoader__.load({
 
     const NS = 'dsh-tunnel'
     const API = '/dsh-tunnel/api'
+    const DOCS_URL = 'https://github.com/Chasing-Dusk/dsh-tunnel/blob/main/docs/SETUP-GUIDE.md'
 
     // ── text ────────────────────────────────────────────────────────────────
     const EN = {
@@ -109,7 +110,21 @@ window.__ModuleLoader__.load({
         'invalid-config': 'incomplete',
         stoppedByUser: 'stopped by you',
       },
-      token: { configured: 'saved', missing: 'missing' },
+      token: {
+        configured: 'saved',
+        missing: 'missing',
+        length: '{n} characters',
+        what: 'A shared secret between frps and frpc. Nothing generates it automatically: whoever runs the server writes it into frps.toml as auth.token, and every client must repeat it exactly. Read it on the server with: grep -i auth.token /path/to/frps.toml',
+        short: 'Only {n} characters are stored. An frp shared secret is usually 32-64 characters, so the paste may have been truncated.',
+      },
+      quick: {
+        title: 'Four steps to a working tunnel',
+        one: '1. Fill the tunnel fields below, then press Save.',
+        two: '2. Paste the frp token from your server, then press Save.',
+        three: '3. Press Apply under DSH trust; restart DSH if it asks.',
+        four: '4. Press Start and watch the badge turn green.',
+        docs: 'Full walkthrough: {url}',
+      },
       trustState: { live: 'applied and live', pending: 'restart DSH to apply', none: 'not applied' },
       loginPlaceholder: 'Set the public address first',
       accessKey: 'Access key',
@@ -207,7 +222,21 @@ window.__ModuleLoader__.load({
         'invalid-config': '配置不完整',
         stoppedByUser: '已被你停止',
       },
-      token: { configured: '已保存', missing: '未设置' },
+      token: {
+        configured: '已保存',
+        missing: '未设置',
+        length: '{n} 个字符',
+        what: 'frp token 是 frps 与 frpc 之间的共享密钥，不是插件或 DSH 生成的：它由运维者在服务器的 frps.toml 里写进 auth.token，客户端必须填完全一样的一串。取法：登录服务器后执行 grep -i auth.token data/frps/frps.toml',
+        short: '当前保存的密钥只有 {n} 个字符。frp 的共享密钥通常是 32–64 个字符，请确认粘贴时没有漏掉后半段。',
+      },
+      quick: {
+        title: '四步跑通',
+        one: '1. 在下面的「隧道参数」里填好服务器地址、控制端口、公网地址，点「保存」。',
+        two: '2. 在「frp 密钥」里粘贴服务器上的 token，点「保存」。',
+        three: '3. 在「DSH 信任配置」里点「应用」；若提示需要重启 DSH 就重启。',
+        four: '4. 点「启动」，看顶部徽标变成「已连接」。',
+        docs: '完整图文步骤：{url}',
+      },
       trustState: { live: '已生效', pending: '需要重启 DSH', none: '未写入' },
       loginPlaceholder: '请先设置公网地址',
       accessKey: '访问密钥',
@@ -480,8 +509,30 @@ window.__ModuleLoader__.load({
       return [h('dt', { key: 'k', style: STYLE.dt }, label), h('dd', { key: 'v', style: STYLE.dd }, text)]
     }
 
-    function Field({ label, children }) {
-      return h('label', { style: STYLE.label }, h('span', null, label), children)
+    function Field({ label, keyName, children }) {
+      return h(
+        'label',
+        { style: STYLE.label },
+        h(
+          'span',
+          { style: { display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' } },
+          h('span', null, label),
+          keyName
+            ? h(
+                'code',
+                {
+                  style: {
+                    fontSize: 10,
+                    opacity: 0.55,
+                    fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+                  },
+                },
+                keyName,
+              )
+            : null,
+        ),
+        children,
+      )
     }
 
     function Check({ label, checked, onChange }) {
@@ -717,6 +768,32 @@ window.__ModuleLoader__.load({
 
         h(
           Card,
+          { title: t('quick.title') },
+          h(
+            'div',
+            { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
+            h('span', null, t('quick.one')),
+            h('span', null, t('quick.two')),
+            h('span', null, t('quick.three')),
+            h('span', null, t('quick.four')),
+            h(
+              'code',
+              {
+                style: {
+                  marginTop: 4,
+                  fontSize: 10,
+                  opacity: 0.6,
+                  wordBreak: 'break-all',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+                },
+              },
+              t('quick.docs', { url: DOCS_URL }),
+            ),
+          ),
+        ),
+
+        h(
+          Card,
           {
             title: t('status'),
             hint: t('hint.status'),
@@ -747,7 +824,7 @@ window.__ModuleLoader__.load({
             ...FORM_FIELDS.map((field) =>
               h(
                 Field,
-                { key: field.key, label: t(`field.${field.key}`) },
+                { key: field.key, label: t(`field.${field.key}`), keyName: field.key },
                 h('input', {
                   type: field.kind === 'number' ? 'number' : 'text',
                   style: STYLE.input,
@@ -761,7 +838,7 @@ window.__ModuleLoader__.load({
             ),
             h(
               Field,
-              { key: 'format', label: t('field.frpConfigFormat') },
+              { key: 'format', label: t('field.frpConfigFormat'), keyName: 'frpConfigFormat' },
               h(
                 'select',
                 { style: STYLE.input, value: f.frpConfigFormat ?? 'toml', onChange: set('frpConfigFormat') },
@@ -788,8 +865,12 @@ window.__ModuleLoader__.load({
         h(
           Card,
           {
-            title: `${t('secret')} · ${status.token?.configured ? t('token.configured') : t('token.missing')}`,
-            hint: t('hint.secret'),
+            title: `${t('secret')} · ${
+              status.token?.configured
+                ? `${t('token.configured')} · ${t('token.length', { n: status.token.length ?? 0 })}`
+                : t('token.missing')
+            }`,
+            hint: t('token.what'),
           },
           h(
             'div',
@@ -805,6 +886,9 @@ window.__ModuleLoader__.load({
             h(Button, { primary: true, disabled: secret === '' || busy !== '', onClick: () => void run('token', async () => { await api('/token', { token: secret }); setSecret(''); return t('saved') }, t('saved')) }, t('save')),
             h(Button, { tone: 'danger', disabled: busy !== '', onClick: () => void run('tokenClear', async () => { await api('/token', { token: '' }); return t('notSet') }, t('notSet')) }, t('clear')),
           ),
+          status.token?.configured && (status.token.length ?? 0) > 0 && (status.token.length ?? 0) < 16
+            ? h('p', { style: { ...STYLE.hint, color: COLORS.warn } }, t('token.short', { n: status.token.length }))
+            : null,
         ),
 
         h(

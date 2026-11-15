@@ -17,10 +17,14 @@
 
 ## 使用
 
-1. 侧栏底部「公网隧道」按钮 → 打开控制页（与 DSH 同源，复用已登录会话）。
+1. 侧栏底部「公网隧道」按钮或 **设置 → 公网隧道** → 打开控制面板（与 DSH 同源，复用已登录会话）。
 2. 保存 frp 密钥 → 填服务器地址/端口、公网地址、内部代理端口、frp 版本 → 保存。
 3. 点「应用」写 DSH 信任配置；如提示需要重启 DSH 则重启。
 4. 状态显示「已连接」后，在「手机登录」里取服务地址与访问密钥填入手机 App。
+
+> **frp 密钥从哪来**：它是 frps 与 frpc 之间的共享口令，由搭建服务器的人在 `frps.toml` 的 `auth.token` 里定义，不是插件自动生成的；服务器不是你自己搭的就向管理员索取。
+>
+> **跟着界面一步步做**：[SETUP-GUIDE.md](https://github.com/Chasing-Dusk/dsh-tunnel/blob/main/docs/SETUP-GUIDE.md) · 字段格式参考：[CONFIGURATION.md](https://github.com/Chasing-Dusk/dsh-tunnel/blob/main/docs/CONFIGURATION.md)
 
 ## 明确限制
 

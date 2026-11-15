@@ -144,8 +144,11 @@ $env:DSH_HOME   # 通常是 C:\Users\<你>\.dsh
 
 ## 6. 首次使用（约 5 分钟）
 
+> **跟着界面一步步做**：[docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md) —— 按「填哪一格、看到什么算成功、失败怎么查」写，推荐先看这个。
+> 每个字段的格式与示例：[docs/CONFIGURATION.md](docs/CONFIGURATION.md)。
+
 1. 装插件 → 侧栏打开控制页。
-2. 保存 **frp 密钥**。
+2. 保存 **frp 密钥**（`frps` 与 `frpc` 之间的共享口令，写在服务器的 `frps.toml` 的 `auth.token` 里；不是插件生成的。取法见 [SETUP-GUIDE §2](docs/SETUP-GUIDE.md#2-填frp-密钥)）。
 3. 填 `frp 服务器地址`、`frp 控制端口`、`公网地址`、`服务器内部代理端口`、`frp 版本`（与服务器一致），保存。
 4. 点 **应用**（DSH 信任配置）→ 若页面提示「需要重启 DSH」，重启 DSH。
 5. 状态区应显示「已连接 / 运行中」；日志出现 `login to server success` 与 `start proxy success`。

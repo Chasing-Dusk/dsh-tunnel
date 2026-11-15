@@ -189,6 +189,9 @@ test('the frp token is write-only from the API surface', async () => {
 
   const status = await send(control, { url: '/dsh-tunnel/api/status' })
   assert.equal(status.body.token.configured, true)
+  // Only the length is exposed, never the value: a wrong-length paste is the
+  // most common mistake and the length is what lets a user catch it.
+  assert.equal(status.body.token.length, 'a-proper-token-value'.length)
   assert.ok(!JSON.stringify(status.body).includes('a-proper-token-value'), 'the token is never echoed')
 
   const cleared = await send(control, { method: 'POST', url: '/dsh-tunnel/api/token', body: JSON.stringify({ token: '' }) })
