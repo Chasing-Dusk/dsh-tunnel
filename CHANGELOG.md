@@ -26,6 +26,7 @@
 
 ### 新增
 
+- **启动前探测 frpc**：插件加载后 1.5 秒解析二进制并读取 `frpc -v`，设置页无需先点「启动」就能看到版本与路径；结果同时写进 `state.json` 与插件日志。
 - **`docs/CONFIGURATION.md`**：逐项配置参考——取值格式、默认值、可抄示例、常见写错方式、frps/frpc 对照样例、自检命令（`frpc -v` / `frpc verify -c`）与失败信息对照表。
 - 用真实 `frpc v0.71.1` 验证过插件生成的 `toml` 与 `ini` 配置（`frpc verify -c` 均返回 syntax is ok）。
 - 测试增至 **94** 个（新增执行被拦、TLS 失败两类用例）。

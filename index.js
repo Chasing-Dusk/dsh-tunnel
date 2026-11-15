@@ -35,6 +35,9 @@ export { Config }
 /** Delay before the first automatic trust write, so Loader boot finishes first. */
 const AUTO_APPLY_DELAY_MS = 8000
 
+/** Delay before probing the frpc binary for display only. */
+const PREFLIGHT_DELAY_MS = 1500
+
 /**
  * Mounts the plugin.
  * @param {import('@deepseek-ai/cordis').Context} ctx - plugin context.
@@ -130,6 +133,23 @@ export function apply(ctx, rawConfig) {
     }
   }
 
+  /**
+   * Resolves the frpc binary without starting anything, so the settings page
+   * can show its path and version on a fresh install instead of "unknown".
+   */
+  const preflight = async () => {
+    try {
+      const resolved = await supervisor.resolveBinary()
+      const snapshot = supervisor.snapshot()
+      if (resolved.ok) {
+        log.note(`frpc ${snapshot.frpcVersion || '(unknown version)'} at ${snapshot.binaryPath}`)
+        state = patchState(dataDir, { frpcBinary: snapshot.binaryPath, frpcVersion: snapshot.frpcVersion })
+      }
+    } catch {
+      // A preflight must never take the plugin down.
+    }
+  }
+
   ctx.effect(() => {
     const disposeRoute = ctx.webServer.register({
       kind: 'prefix',
@@ -150,12 +170,18 @@ export function apply(ctx, rawConfig) {
 
     void startIfConfigured('dsh-start')
 
+    const preflightTimer = setTimeout(() => {
+      void preflight()
+    }, PREFLIGHT_DELAY_MS)
+    preflightTimer.unref?.()
+
     const trustTimer = setTimeout(() => {
       void autoApplyTrust()
     }, AUTO_APPLY_DELAY_MS)
     trustTimer.unref?.()
 
     return async () => {
+      clearTimeout(preflightTimer)
       clearTimeout(trustTimer)
       process.off('exit', exitCleanup)
       disposeRoute()
