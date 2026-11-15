@@ -1,0 +1,67 @@
+{
+  "name": "dsh-tunnel",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "license": "MIT",
+  "description": "Expose this DeepSeek Harness instance through a fixed public HTTPS address: writes the DSH trust patch, generates and supervises an frpc tunnel, and shows the phone login link.",
+  "icon": "./icon.svg",
+  "author": "LittleWorkhorseProMax",
+  "homepage": "https://github.com/LittleWorkhorseProMax/dsh-tunnel#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LittleWorkhorseProMax/dsh-tunnel.git"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "frp",
+    "tunnel",
+    "remote-access"
+  ],
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "src",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "scripts": {
+    "test": "node --test",
+    "pack:release": "npm pack --pack-destination dist"
+  }
+}

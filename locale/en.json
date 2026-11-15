@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Public tunnel",
+    "description": "Publishes this DSH instance behind a fixed public HTTPS address: writes the DSH trust patch, generates and supervises an frpc tunnel, and shows the phone login link. Requires your own frp server.",
+    "detail": "docs/DETAIL.md"
+  }
+}

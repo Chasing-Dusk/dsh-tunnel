@@ -1,0 +1,6 @@
+# dsh-tunnel bundle: one Host row owns the public-address trust patch, the
+# frpc config generation and supervision, and the status/login page. The
+# browser half adds a sidebar-foot entry that opens that page.
+- insert:
+    - id: dsh-tunnel
+      name: 'dsh-tunnel'

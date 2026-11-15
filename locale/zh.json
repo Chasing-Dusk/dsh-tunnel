@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "公网隧道",
+    "description": "把本机 DSH 发布到一个固定公网 HTTPS 地址：写入 DSH 信任配置、生成并守护 frpc 隧道、展示手机登录信息。需要自备 frp 服务器。",
+    "detail": "docs/DETAIL.md"
+  }
+}
